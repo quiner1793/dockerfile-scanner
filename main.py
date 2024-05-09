@@ -1,6 +1,5 @@
 import json
-import logging
-from logging import log
+import os
 import re
 import sys
 
@@ -12,20 +11,17 @@ import docker
 base_files_full_history = json.load(open('base_files_full_history_compressed.json', 'r'))
 docker_image_stigs: dict[str, str] = json.load(open('docker_image_stigs.json', 'r'))
 base_file_pattern = re.compile(r"file:(\w{64}) in /")
+base_image_names = ["rockylinux", "alpine", "debian", "almalinux", "oraclelinux", "busybox", "amazonlinux"]
 
 
-def find_base_images(file_hash: str | None) -> list[str]:
-    if file_hash is None:
-        return []
-
-    found_keys = []
+def find_base_image(file_hash: str | None) -> str | None:
     for base_image_name, file_hashes in base_files_full_history.items():
         if file_hash in file_hashes:
-            found_keys.append(base_image_name)
-    return found_keys
+            return base_image_name
+    return None
 
 
-def get_base_image(docker_image_name: str) -> list[str]:
+def get_base_image(docker_image_name: str) -> str | None:
     # Initialize the Docker client
     client = docker.from_env()
 
@@ -37,27 +33,32 @@ def get_base_image(docker_image_name: str) -> list[str]:
     image_history = image.history()
     matches = base_file_pattern.findall(str(image_history))
     file_hash = matches[-1] if len(matches) > 0 else None
-    return find_base_images(file_hash)
+    return find_base_image(file_hash)
 
 
-def get_available_stigs(docker_image_name: str) -> list[str]:
+def get_available_stigs(docker_image_name: str) -> str | None:
     if docker_image_name in docker_image_stigs.keys():
-        return [docker_image_stigs[docker_image_name]]
-    return []
+        return docker_image_stigs[docker_image_name]
+
+    for base_image_name in base_image_names:
+        if docker_image_name.startswith(f"{base_image_name}:"):
+            return docker_image_stigs[base_image_name]
+
+    return None
 
 
 def analyze_docker_image(docker_image_name: str) -> None:
     stigs = get_available_stigs(docker_image_name)
-    if len(stigs) > 0:
-        print(f"Found available STIGs for {docker_image_name} image: {' '.join(stigs)}")
+    if stigs is not None:
+        print(f"Found available STIGs for {docker_image_name} image: {stigs}")
     else:
         print(f"No available STIGs for {docker_image_name} image. Analyzing base image...")
         base_image_name = get_base_image(docker_image_name)
         if base_image_name is not None:
             print(f"Found base image for {docker_image_name} image: {base_image_name}")
-            stigs = get_available_stigs(docker_image_name)
-            if len(stigs) > 0:
-                print(f"Available STIGs: {' '.join(stigs)}")
+            stigs = get_available_stigs(base_image_name)
+            if stigs is not None:
+                print(f"Available STIGs: {stigs}")
             else:
                 print(f"Available STIGs: None")
         else:
@@ -121,29 +122,27 @@ def scan_docker_compose(docker_compose_dir: str, docker_compose_path: str):
             print(exc)
 
 
-def scan_docker_dir(docker_dir: str):
-    filenames = next(walk(docker_dir), (None, None, []))[2]
+def scan_docker_dir(docker_dir: str, recurse: bool = False):
+    for root, _, f_names in walk(docker_dir):
+        for filename in f_names:
+            if "dockerfile" in filename.lower():
+                print("------------------------------------------------------------")
+                print(f"Detected Dockerfile: {filename}. Analyzing...")
+                print("------------------------------------------------------------")
+                scan_dockerfile(dockerfile_path=path.join(root, filename))
+                print("\n")
 
-    for filename in filenames:
-        print(filename)
-        if "dockerfile" in filename.lower():
-            print("------------------------------------------------------------")
-            print(f"Detected Dockerfile: {filename}. Analyzing...")
-            print("------------------------------------------------------------")
-            scan_dockerfile(dockerfile_path=path.join(docker_dir, filename))
-            print("\n")
-
-        elif "docker-compose" in filename.lower() and (filename.endswith(".yml") or filename.endswith(".yaml")):
-            print("------------------------------------------------------------")
-            print(f"Detected docker compose file: {filename}. Analyzing...")
-            print("------------------------------------------------------------")
-            scan_docker_compose(docker_compose_dir=docker_dir, docker_compose_path=path.join(docker_dir, filename))
-            print("\n")
+            elif "docker-compose" in filename.lower() and (filename.endswith(".yml") or filename.endswith(".yaml")):
+                print("------------------------------------------------------------")
+                print(f"Detected docker compose file: {filename}. Analyzing...")
+                print("------------------------------------------------------------")
+                scan_docker_compose(docker_compose_dir=root, docker_compose_path=path.join(root, filename))
+                print("\n")
+        if not recurse:
+            break
 
 
 if __name__ == '__main__':
-    # docker_dir_path = ["dockerfiles/", "docker-composes/"]
-    # docker_dir_path = ["docker-composes/"]
-    # docker_dir_path = ["dockerfiles/"]
     docker_dir_path = sys.argv[1]
-    scan_docker_dir(docker_dir_path)
+    recurse = True if os.getenv("RECURSE", default='false') == 'true' else False
+    scan_docker_dir(docker_dir_path, recurse=recurse)
