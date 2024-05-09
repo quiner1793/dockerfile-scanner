@@ -1,0 +1,10 @@
+{
+  "rockylinux": "Red Hat Enterprise Linux 5-9",
+  "alpine": "General Linux",
+  "debian": "General Linux",
+  "almalinux": "Red Hat Enterprise Linux 5-9",
+  "oraclelinux": "Oracle Linux 5-8",
+  "busybox": "General Linux",
+  "amazonlinux": "General Linux",
+  "ubuntu": "Canonical Ubuntu 20.04 LTS"
+}

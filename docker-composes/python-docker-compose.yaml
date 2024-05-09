@@ -1,0 +1,106 @@
+version: '3.8'
+
+networks:
+  loki:
+
+services:
+  web:
+    image: quiner/innotravel-server-v2-web:latest
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.frontend.rule=Host(`24tour-manager.ru`)"
+      - "traefik.http.routers.frontend.entrypoints=websecure"
+      - "traefik.http.routers.frontend.tls=true"
+      - "traefik.http.services.frontend.loadbalancer.server.port=80"
+      - "traefik.http.routers.frontend.service=frontend"
+      - "traefik.http.routers.frontend.tls.certresolver=myresolver"
+    networks:
+      - loki
+      -
+  traefik:
+    image: "traefik:v2.10"
+    container_name: "traefik"
+    restart: on-failure
+    command:
+      - "--api.insecure=false"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entrypoints.websecure.address=:443"
+      - "--certificatesresolvers.myresolver.acme.tlschallenge=true"
+      - "--certificatesresolvers.myresolver.acme.email=innotravel2016_temp@gmail.com"
+      - "--certificatesresolvers.myresolver.acme.storage=/letsencrypt/acme_temp.json"
+    ports:
+      - "443:443"
+    networks:
+      - loki
+    volumes:
+      - "./letsencrypt:/letsencrypt"
+      - "/var/run/docker.sock:/var/run/docker.sock:ro"
+
+  fastapi:
+    build:
+      context: ../dockerfiles
+      dockerfile: Dockerfile_python
+    restart: always
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.fastapi.rule=Host(`24tour-manager.ru`) && PathPrefix(`/api`)"
+      - "traefik.http.routers.fastapi.middlewares=strip-prefix"
+      - "traefik.http.middlewares.strip-prefix.stripprefix.prefixes=/api"
+      - "traefik.http.routers.fastapi.entrypoints=websecure"
+      - "traefik.http.routers.fastapi.tls.certresolver=myresolver"
+    environment:
+      # Server
+      - "SERVER_HOST=0.0.0.0"
+      - "SERVER_PORT=8080"
+      - "SERVER_WORKERS=${SERVER_WORKERS}"
+      - "TG_TOKEN=${TG_TOKEN}"
+      # OpenAPI
+      - "OPENAPI_PREFIX=/api"
+      # APNS
+      - "APNS_AUTH_KEY_ID=${APNS_AUTH_KEY_ID}"
+      - "APNS_TEAM_ID=${APNS_TEAM_ID}"
+    ports:
+      - "8080"
+    logging: &logger
+      driver: "json-file"
+      options:
+        max-size: "100m"
+        max-file: "2"
+        tag: "{{.ImageName}}|{{.Name}}|{{.ImageFullID}}|{{.FullID}}"
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8080/get_status_server" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - loki
+
+  redis_db:
+    image: redis:7.2.3
+    ports:
+      - "6379"
+    networks:
+      - loki
+    healthcheck:
+      test: [ "CMD", "redis-cli", "--raw", "incr", "ping" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  telegram_bot:
+    build:
+      context: telegram_bot
+      dockerfile: Dockerfile
+    environment:
+      - "SERVER_HOST=fastapi"
+      - "SERVER_PORT=8080"
+      - "REDIS_HOST=redis_db"
+      - "REDIS_PORT=6379"
+      - "TG_TOKEN=${TG_TOKEN}"
+    depends_on:
+      - redis_db
+      - fastapi
+    logging: *logger
+    networks:
+      - loki
