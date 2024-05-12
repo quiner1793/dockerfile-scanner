@@ -8,23 +8,53 @@ from constants import (
     base_files_full_history,
     base_file_pattern,
     docker_image_stigs,
-    base_image_names,
     PrintColors,
 )
 
 
-def get_available_stigs(docker_image_name: str | None) -> str | None:
+def get_stig_info(docker_image_name: str | None) -> dict | None:
     if docker_image_name is None:
         return None
 
-    if docker_image_name in docker_image_stigs.keys():
-        return docker_image_stigs[docker_image_name]
+    stig_info = None
+    for docker_family in docker_image_stigs.keys():
+        if docker_image_name.startswith(docker_family):
+            base_docker_stigs = docker_image_stigs[docker_family]
+            for docker_family_member in base_docker_stigs.keys():
+                if docker_image_name.startswith(docker_family_member):
+                    stig_info = base_docker_stigs[docker_family_member]
+            if stig_info is None:
+                stig_info = base_docker_stigs.get("default")
+    return stig_info
 
-    for base_image_name in base_image_names:
-        if docker_image_name.startswith(f"{base_image_name}:"):
-            return docker_image_stigs[base_image_name]
 
-    return None
+class StigInfo:
+    def __init__(self, docker_image_name: str | None, base_image_name: str | None):
+        stig_info = get_stig_info(docker_image_name=docker_image_name)
+
+        # STIG not found or default STIG info is used
+        if stig_info is None or len(stig_info.keys()) == 1:
+            base_stig_info = get_stig_info(docker_image_name=base_image_name)
+            if base_stig_info is not None:
+                # Found better stig for base image
+                if stig_info is None or len(base_stig_info.keys()) > len(stig_info.keys()):
+                    stig_info = base_stig_info
+
+        if stig_info is None:
+            stig_info = {}
+
+        self.stig_name = stig_info.get("name")
+        self.profile = stig_info.get("profile", None)
+        self.datastream_id = stig_info.get("datastream_id", None)
+        self.xccdf_id = stig_info.get("xccdf_id", None)
+        self.scap_file = stig_info.get("scap_file", None)
+
+    def print_report(self):
+        print(f"\tSTIG name: {self.stig_name}")
+        print(f"\tProfile: {self.profile}")
+        print(f"\tDatastream ID: {self.datastream_id}")
+        print(f"\tXCCDF ID: {self.xccdf_id}")
+        print(f"\tSCAP file: {self.scap_file}")
 
 
 def find_base_image(file_hash: str | None) -> str | None:
@@ -79,14 +109,6 @@ class DockerRuntimeInfo:
         print(f"\tDistribution info: {self.proc_version}")
 
 
-class StigInfo:
-    def __init__(self, stig_name: str):
-        self.stig_name = stig_name
-
-    def print_report(self):
-        print(f"\tSTIG name: {self.stig_name}")
-
-
 class DockerImage:
     def __init__(self, image_name: str, usage_link: str | list[str]):
         self.image_name = image_name
@@ -119,12 +141,8 @@ class DockerImage:
         file_hash = matches[-1] if len(matches) > 0 else None
         self.base_image_name = find_base_image(file_hash)
 
-    def get_image_stigs(self):
-        # If no STIGs for image, check STIGs for base image
-        stigs = get_available_stigs(
-            docker_image_name=self.image_name
-        ) or get_available_stigs(docker_image_name=self.base_image_name)
-        self.stig_info = StigInfo(stig_name=stigs) if stigs else None
+    def get_image_stig_analytics(self):
+        self.stig_info = StigInfo(docker_image_name=self.image_name, base_image_name=self.base_image_name)
 
     def docker_exec_commands(
         self, commands: dict[str, str], docker_client: DockerClient
@@ -205,7 +223,7 @@ class DockerImageAnalytics:
             self.docker_image.get_runtime_info(docker_client=docker_client)
 
         if self.stigs_flag:
-            self.docker_image.get_image_stigs()
+            self.docker_image.get_image_stig_analytics()
 
     def print_report(self):
         if self.base_image_flag:
