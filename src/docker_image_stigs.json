@@ -1,12 +1,137 @@
 {
-  "rockylinux": "Red Hat Enterprise Linux 5-9",
-  "alpine": "General Linux",
-  "debian": "General Linux",
-  "almalinux": "Red Hat Enterprise Linux 5-9",
-  "oraclelinux": "Oracle Linux 5-8",
-  "busybox": "General Linux",
-  "amazonlinux": "General Linux",
-  "ubuntu:16.04": "Canonical Ubuntu 16.04 LTS",
-  "ubuntu:18.04": "Canonical Ubuntu 18.04 LTS",
-  "ubuntu:20.04": "Canonical Ubuntu 20.04 LTS"
+  "rockylinux": {
+    "rockylinux:8": {
+      "name": "Red Hat Enterprise Linux 8",
+      "profile": "xccdf_org.ssgproject.content_profile_anssi_bp28_enhanced",
+      "datastream_id": "scap_org.open-scap_datastream_from_xccdf_ssg-rhel8-xccdf.xml",
+      "xccdf_id": "scap_org.open-scap_cref_ssg-rhel8-xccdf.xml",
+      "scap_file": "ssg-rockylinux8-ds.xml"
+    },
+    "rockylinux:9": {
+      "name": "Red Hat Enterprise Linux 9",
+      "profile": "xccdf_org.ssgproject.content_profile_anssi_bp28_enhanced",
+      "datastream_id": "scap_org.open-scap_datastream_from_xccdf_ssg-rhel9-xccdf.xml",
+      "xccdf_id": "scap_org.open-scap_cref_ssg-rhel9-xccdf.xml",
+      "scap_file": "ssg-rockylinux9-ds.xml"
+    },
+    "default": {
+      "name": "Red Hat Enterprise Linux 5-9"
+    }
+  },
+  "alpine": {
+    "default": {
+      "name": "Operating System Security Requirements Guide (UNIX Version)"
+    }
+  },
+  "debian": {
+    "debian:12": {
+      "profile": "xccdf_org.ssgproject.content_profile_anssi_bp28_enhanced",
+      "datastream_id": "scap_org.open-scap_datastream_from_xccdf_ssg-debian12-xccdf.xml",
+      "xccdf_id": "scap_org.open-scap_cref_ssg-debian12-xccdf.xml",
+      "scap_file": "ssg-debian12-ds.xml"
+    },
+    "debian:11": {
+      "profile": "xccdf_org.ssgproject.content_profile_anssi_np_nt28_average",
+      "datastream_id": "scap_org.open-scap_datastream_from_xccdf_ssg-debian11-xccdf.xml",
+      "xccdf_id": "scap_org.open-scap_cref_ssg-debian11-xccdf.xml",
+      "scap_file": "ssg-debian11-ds.xml"
+    },
+    "debian:10": {
+      "profile": "xccdf_org.ssgproject.content_profile_anssi_np_nt28_average",
+      "datastream_id": "scap_org.open-scap_datastream_from_xccdf_ssg-debian10-xccdf.xml",
+      "xccdf_id": "scap_org.open-scap_cref_ssg-debian10-xccdf.xml",
+      "scap_file": "ssg-debian10-ds.xml"
+    },
+    "default": {
+      "name": "Operating System Security Requirements Guide (UNIX Version)"
+    }
+  },
+  "almalinux": {
+    "almalinux:8": {
+      "name": "Red Hat Enterprise Linux 8",
+      "profile": "xccdf_org.ssgproject.content_profile_anssi_bp28_enhanced",
+      "datastream_id": "scap_org.open-scap_datastream_from_xccdf_ssg-almalinux8-xccdf.xml",
+      "xccdf_id": "scap_org.open-scap_cref_ssg-almalinux8-xccdf.xml",
+      "scap_file": "ssg-almalinux8-ds.xml"
+    },
+    "almalinux:9": {
+      "name": "Red Hat Enterprise Linux 9",
+      "profile": "xccdf_org.ssgproject.content_profile_anssi_bp28_enhanced",
+      "datastream_id": "scap_org.open-scap_datastream_from_xccdf_ssg-almalinux9-xccdf.xml",
+      "xccdf_id": "scap_org.open-scap_cref_ssg-almalinux9-xccdf.xml",
+      "scap_file": "ssg-almalinux9-ds.xml"
+    },
+    "default": {
+      "name": "Red Hat Enterprise Linux 5-9"
+    }
+  },
+  "oraclelinux": {
+    "oraclelinux:9": {
+      "name": "Oracle Linux 9",
+      "profile": "xccdf_org.ssgproject.content_profile_anssi_bp28_enhanced",
+      "datastream_id": "scap_org.open-scap_datastream_from_xccdf_ssg-ol9-xccdf.xml",
+      "xccdf_id": "scap_org.open-scap_cref_ssg-ol9-xccdf.xml",
+      "scap_file": "ssg-oraclelinux9-ds.xml"
+    },
+    "oraclelinux:8": {
+      "name": "Oracle Linux 8",
+      "profile": "xccdf_org.ssgproject.content_profile_anssi_bp28_enhanced",
+      "datastream_id": "scap_org.open-scap_datastream_from_xccdf_ssg-ol8-xccdf.xml",
+      "xccdf_id": "scap_org.open-scap_cref_ssg-ol8-xccdf.xml",
+      "scap_file": "ssg-oraclelinux8-ds.xml"
+    },
+    "oraclelinux:7": {
+      "name": "Oracle Linux 7",
+      "profile": "xccdf_org.ssgproject.content_profile_anssi_nt28_enhanced",
+      "datastream_id": "scap_org.open-scap_datastream_from_xccdf_ssg-ol7-xccdf.xml",
+      "xccdf_id": "scap_org.open-scap_cref_ssg-ol7-xccdf.xml",
+      "scap_file": "ssg-oraclelinux7-ds.xml"
+    },
+    "default": {
+      "name": "Oracle Linux 5-8"
+    }
+  },
+  "busybox": {
+    "default": {
+      "name": "Operating System Security Requirements Guide (UNIX Version)"
+    }
+  },
+  "amazonlinux": {
+    "default": {
+      "name": "Operating System Security Requirements Guide (UNIX Version)"
+    }
+  },
+  "ubuntu": {
+    "ubuntu:22.04": {
+      "name": "Ubuntu 22.04",
+      "profile": "xccdf_org.ssgproject.content_profile_cis_level1_server",
+      "datastream_id": "scap_org.open-scap_datastream_from_xccdf_ssg-ubuntu2204-xccdf.xml",
+      "xccdf_id": "scap_org.open-scap_cref_ssg-ubuntu2204-xccdf.xml",
+      "scap_file": "ssg-ubuntu2204-ds.xml"
+    },
+    "ubuntu:20.04": {
+      "name": "Ubuntu 20.04",
+      "profile": "xccdf_org.ssgproject.content_profile_anssi_np_nt28_average",
+      "datastream_id": "scap_org.open-scap_datastream_from_xccdf_ssg-ubuntu2004-xccdf.xml",
+      "xccdf_id": "scap_org.open-scap_cref_ssg-ubuntu2004-xccdf.xml",
+      "scap_file": "ssg-ubuntu2004-ds.xml"
+    },
+    "ubuntu:18.04": {
+      "name": "Ubuntu 18.04",
+      "profile": "xccdf_org.ssgproject.content_profile_anssi_np_nt28_average",
+      "datastream_id": "scap_org.open-scap_datastream_from_xccdf_ssg-ubuntu1804-xccdf.xml",
+      "xccdf_id": "scap_org.open-scap_cref_ssg-ubuntu1804-xccdf.xml",
+      "scap_file": "ssg-ubuntu1804-ds.xml"
+    },
+    "ubuntu:16.04": {
+      "name": "Ubuntu 16.04",
+      "profile": "xccdf_org.ssgproject.content_profile_anssi_np_nt28_average",
+      "datastream_id": "scap_org.open-scap_datastream_from_xccdf_ssg-ubuntu1604-xccdf.xml",
+      "xccdf_id": "scap_org.open-scap_cref_ssg-ubuntu1604-xccdf.xml",
+      "scap_file": "ssg-ubuntu1604-ds.xml"
+    },
+    "default": {
+      "name": "Canonical Ubuntu"
+    }
+  }
 }
