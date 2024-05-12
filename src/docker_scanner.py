@@ -105,16 +105,15 @@ class DockerScanner:
                             )
                             self.docker_images.extend(docker_file.get_docker_images())
                 elif filename.endswith(".tf"):
-                    terraform_images = TerraformFile(
+                    print(
+                        f"{PrintColors.BOLD}Detected terraform file{PrintColors.ENDC}: {filename}"
+                    )
+                    self.docker_images.extend(
+                        TerraformFile(
                             file_path=os.path.join(root, filename)
                         ).get_docker_images()
-                    if len(terraform_images) > 0:
-                        print(
-                            f"{PrintColors.BOLD}Detected terraform file{PrintColors.ENDC}: {filename}"
-                        )
-                        self.docker_images.extend(
-                            terraform_images
-                        )
+                    )
+
             if not self.recurse_flag:
                 break
 
