@@ -1,3 +1,4 @@
+import os
 import re
 
 import docker
@@ -10,6 +11,7 @@ from constants import (
     docker_image_stigs,
     PrintColors,
 )
+from oscap_docker_python.oscap_docker_util_noatomic import OscapDockerScan
 
 
 def get_stig_info(docker_image_name: str | None) -> dict | None:
@@ -37,7 +39,9 @@ class StigInfo:
             base_stig_info = get_stig_info(docker_image_name=base_image_name)
             if base_stig_info is not None:
                 # Found better stig for base image
-                if stig_info is None or len(base_stig_info.keys()) > len(stig_info.keys()):
+                if stig_info is None or len(base_stig_info.keys()) > len(
+                    stig_info.keys()
+                ):
                     stig_info = base_stig_info
 
         if stig_info is None:
@@ -48,6 +52,34 @@ class StigInfo:
         self.datastream_id = stig_info.get("datastream_id", None)
         self.xccdf_id = stig_info.get("xccdf_id", None)
         self.scap_file = stig_info.get("scap_file", None)
+
+    def scan_docker_image(self, docker_image_name: str | None):
+        if docker_image_name is None:
+            return None
+
+        leftover_args = [
+            "xccdf", "eval",
+            "--fetch-remote-resources",
+            "--datastream-id", self.datastream_id,
+            "--xccdf-id", self.xccdf_id,
+            "--profile", self.profile,
+            "--oval-results",
+            "--results", "/tmp/xccdf-results.xml",
+            "--results-arf", "/tmp/arf.xml",
+            "--report", "/tmp/report.html",
+            f"../scap-content/{self.scap_file}"
+        ]
+
+        try:
+            oscap_docker = OscapDockerScan(target=docker_image_name, is_image=True, host_directory=os.getcwd())
+            rc = OscapDockerScan.scan(oscap_docker, leftover_args)
+        except (ValueError, RuntimeError) as e:
+            print(e)
+        except(FileNotFoundError) as e:
+            print("Target {0} not found.\n".format(docker_image_name))
+        except Exception as exc:
+            print(exc)
+
 
     def print_report(self):
         print(f"\tSTIG name: {self.stig_name}")
@@ -142,7 +174,10 @@ class DockerImage:
         self.base_image_name = find_base_image(file_hash)
 
     def get_image_stig_analytics(self):
-        self.stig_info = StigInfo(docker_image_name=self.image_name, base_image_name=self.base_image_name)
+        self.stig_info = StigInfo(
+            docker_image_name=self.image_name, base_image_name=self.base_image_name
+        )
+        self.stig_info.scan_docker_image(docker_image_name=self.image_name)
 
     def docker_exec_commands(
         self, commands: dict[str, str], docker_client: DockerClient
