@@ -1,12 +1,12 @@
 import os
-import re
+import sys
 
 from docker_scanner import DockerScanner
 
 
 if __name__ == "__main__":
-    # docker_dir_path = sys.argv[1]
-    docker_dir_path = "../terraform"
+    docker_dir_path = sys.argv[1]
+    # docker_dir_path = "../terraform"
     recurse = True if os.getenv("RECURSE", default="false") == "true" else False
 
     scanner = DockerScanner(
