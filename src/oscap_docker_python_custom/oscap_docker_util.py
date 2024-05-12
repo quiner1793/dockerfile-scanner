@@ -22,16 +22,11 @@ from __future__ import print_function
 
 import os
 import tempfile
-import subprocess
-import platform
 import shutil
-from oscap_docker_python.get_cve_input import getInputCVE
+from src.oscap_docker_python_new.get_cve_input import getInputCVE
 import sys
 import docker
-import collections
-from oscap_docker_python.oscap_docker_util_noatomic import OscapDockerScan
-from oscap_docker_python.oscap_docker_common import oscap_chroot, get_dist, \
-    OscapResult, OscapError
+from src.oscap_docker_python_new.oscap_docker_common import oscap_chroot, get_dist
 
 atomic_loaded = False
 

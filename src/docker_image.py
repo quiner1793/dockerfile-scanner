@@ -1,6 +1,4 @@
-import os
 import re
-
 import docker
 from docker.errors import ContainerError, APIError, ImageNotFound
 from docker import DockerClient
@@ -11,6 +9,7 @@ from constants import (
     docker_image_stigs,
     PrintColors,
 )
+from oscap_docker_python.oscap_docker_common import OscapResult
 from oscap_docker_python.oscap_docker_util_noatomic import OscapDockerScan
 
 
@@ -40,7 +39,7 @@ class StigInfo:
             if base_stig_info is not None:
                 # Found better stig for base image
                 if stig_info is None or len(base_stig_info.keys()) > len(
-                    stig_info.keys()
+                        stig_info.keys()
                 ):
                     stig_info = base_stig_info
 
@@ -52,6 +51,11 @@ class StigInfo:
         self.datastream_id = stig_info.get("datastream_id", None)
         self.xccdf_id = stig_info.get("xccdf_id", None)
         self.scap_file = stig_info.get("scap_file", None)
+        self.oscap_result: OscapResult | None = None
+        self.passed: int | None = None
+        self.failed: int | None = None
+        self.not_applicable: int | None = None
+
 
     def scan_docker_image(self, docker_image_name: str | None):
         if docker_image_name is None:
@@ -64,22 +68,30 @@ class StigInfo:
             "--xccdf-id", self.xccdf_id,
             "--profile", self.profile,
             "--oval-results",
-            "--results", "/tmp/xccdf-results.xml",
-            "--results-arf", "/tmp/arf.xml",
-            "--report", "/tmp/report.html",
+            "--report", f"{docker_image_name.replace(':', '_')}_report.html",
             f"../scap-content/{self.scap_file}"
         ]
 
         try:
-            oscap_docker = OscapDockerScan(target=docker_image_name, is_image=True, host_directory=os.getcwd())
-            rc = OscapDockerScan.scan(oscap_docker, leftover_args)
+            oscap_docker = OscapDockerScan(target=docker_image_name, is_image=True)
+            self.oscap_result = OscapDockerScan.scan(oscap_docker, leftover_args)
+
+            # Define a pattern to find the Result lines and their statuses.
+            result_pattern = re.compile(r'^Result\s+(pass|fail|notapplicable)$', re.M)
+
+            # Find all matches according to the pattern
+            results = result_pattern.findall(self.oscap_result.stdout)
+
+            # Count each type of result
+            self.passed = results.count('pass')
+            self.failed = results.count('fail')
+            self.not_applicable = results.count('notapplicable')
         except (ValueError, RuntimeError) as e:
             print(e)
-        except(FileNotFoundError) as e:
+        except FileNotFoundError as e:
             print("Target {0} not found.\n".format(docker_image_name))
         except Exception as exc:
             print(exc)
-
 
     def print_report(self):
         print(f"\tSTIG name: {self.stig_name}")
@@ -87,6 +99,9 @@ class StigInfo:
         print(f"\tDatastream ID: {self.datastream_id}")
         print(f"\tXCCDF ID: {self.xccdf_id}")
         print(f"\tSCAP file: {self.scap_file}")
+        print(f"\tOSCAP passed: {self.passed}")
+        print(f"\tOSCAP failed: {self.failed}")
+        print(f"\tOSCAP not_applicable: {self.not_applicable}")
 
 
 def find_base_image(file_hash: str | None) -> str | None:
@@ -180,7 +195,7 @@ class DockerImage:
         self.stig_info.scan_docker_image(docker_image_name=self.image_name)
 
     def docker_exec_commands(
-        self, commands: dict[str, str], docker_client: DockerClient
+            self, commands: dict[str, str], docker_client: DockerClient
     ) -> dict[str, str | None]:
         # Create the container but do not start it yet
         output = {command: None for command in commands.keys()}
@@ -228,12 +243,12 @@ class DockerImage:
 
 class DockerImageAnalytics:
     def __init__(
-        self,
-        docker_image: DockerImage,
-        base_image_flag: bool = True,
-        inspect_info_flag: bool = True,
-        runtime_info_flag: bool = True,
-        stigs_flag: bool = True,
+            self,
+            docker_image: DockerImage,
+            base_image_flag: bool = True,
+            inspect_info_flag: bool = True,
+            runtime_info_flag: bool = True,
+            stigs_flag: bool = True,
     ):
         self.docker_image = docker_image
         self.base_image_flag = base_image_flag

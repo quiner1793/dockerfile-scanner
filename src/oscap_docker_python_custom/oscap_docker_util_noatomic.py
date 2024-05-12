@@ -21,13 +21,12 @@ from __future__ import print_function
 import os
 import tempfile
 import shutil
-from oscap_docker_python.get_cve_input import getInputCVE
+from oscap_docker_python_new.get_cve_input import getInputCVE
 import sys
 import docker
 import uuid
 import collections
-from oscap_docker_python.oscap_docker_common import oscap_chroot, get_dist, \
-    OscapResult, OscapError
+from oscap_docker_python_new.oscap_docker_common import oscap_chroot, get_dist
 
 
 class OscapError(Exception):
@@ -40,7 +39,7 @@ OscapResult = collections.namedtuple("OscapResult", ("returncode", "stdout", "st
 
 class OscapDockerScan(object):
 
-    def __init__(self, target, is_image=False, oscap_binary='oscap'):
+    def __init__(self, target, host_mount_point: str, scap_content: str, is_image=False, oscap_binary='oscap'):
 
         # init docker low level api (usefull for deep details like container pid)
         try:
@@ -51,6 +50,7 @@ class OscapDockerScan(object):
         # init docker high level API (to deal with start/stop/run containers/image)
         self.client_api = docker.from_env()
         self.is_image = is_image
+        self.mountpoint = host_mount_point
         self.stop_at_end = False  # stop the container after scan if True
         self.oscap_binary = oscap_binary or 'oscap'
         self.container_name = None
@@ -64,17 +64,19 @@ class OscapDockerScan(object):
 
                 try:
                     tmp_cont = self.client.create_container(
-                        self.image_name, 'sh', name=self.container_name, tty=True)
-                    # tty=True is required in order to keep the container running
+                        self.image_name, 'sh', name=self.container_name, tty=True,
+                        volumes=[self.mountpoint, scap_content],
+                        host_config=self.client.create_host_config(binds=[
+                            f"/root:/{self.mountpoint}"  # mounts the root of the container to /mnt inside the container
+                        ])
+                    )
                     self.client.start(container=tmp_cont.get('Id'))
 
+                    # Configuration becomes
                     self.config = self.client.inspect_container(self.container_name)
-                    if int(self.config["State"]["Pid"]) == 0:
-                        sys.stderr.write("Cannot run image {0}.\n".format(self.image_name))
-                    else:
-                        self.pid = int(self.config["State"]["Pid"])
+                    self.pid = int(self.config["State"]["Pid"])
                 except Exception as e:
-                    sys.stderr.write("Cannot run image {0}.\n".format(self.image_name))
+                    sys.stderr.write(f"Cannot run image {self.image_name}.\n")
                     raise e
             else:
                 raise ValueError("Image {0} not found.\n".format(target))
@@ -104,7 +106,6 @@ class OscapDockerScan(object):
             self.pid = int(self.config["State"]["Pid"])
 
         if self._check_container_mountpoint():
-            self.mountpoint = "/proc/{0}/root".format(self.pid)
             print("Docker container {0} ready to be scanned."
                   .format(self.container_name))
         else:
@@ -162,7 +163,7 @@ class OscapDockerScan(object):
         '''
         Ensure that the container fs is well mounted and return its path
         '''
-        return os.access("/proc/{0}/root".format(self.pid), os.R_OK)
+        return os.access(self.mountpoint, os.R_OK)
 
     def scan_cve(self, scan_args):
         '''
@@ -208,17 +209,20 @@ class OscapDockerScan(object):
 
         return scan_result.returncode
 
-    def scan(self, scan_args) -> OscapResult:
-        """
+    def scan(self, scan_args):
+        '''
         Wrapper function forwarding oscap args for an offline scan
-        """
+        '''
         scan_result = oscap_chroot(
-            "/proc/{0}/root".format(self.pid),
+            self.mountpoint,
             self.oscap_binary, scan_args,
             self.image_name or self.container_name,
             self.config["Config"].get("Env", []) or []  # because Env can exists but be None
         )
 
+        print(scan_result.stdout)
+        print(scan_result.stderr, file=sys.stderr)
+
         self._end()
 
-        return scan_result
+        return scan_result.returncode
