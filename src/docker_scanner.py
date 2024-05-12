@@ -8,6 +8,7 @@ from docker_unit_file import (
     DockerUnitFile,
     KubernetesFile,
     HelmFile,
+    TerraformFile,
 )
 from docker_image import DockerImage, DockerImageAnalytics
 from constants import PrintColors
@@ -58,6 +59,7 @@ class DockerScanner:
         recurse_flag: bool = False,
         base_image_flag: bool = True,
         inspect_info_flag: bool = True,
+        runtime_info_flag: bool = True,
         stigs_flag: bool = True,
     ):
         self.scan_dir = scan_dir
@@ -66,6 +68,7 @@ class DockerScanner:
         self.docker_image_analytics: list[DockerImageAnalytics] = []
         self.base_image_flag = base_image_flag
         self.inspect_info_flag = inspect_info_flag
+        self.runtime_info_flag = runtime_info_flag
         self.stigs_flag = stigs_flag
 
     def traverse_directory(self):
@@ -101,6 +104,17 @@ class DockerScanner:
                                 f"{PrintColors.BOLD}Detected k8s/helm manifest{PrintColors.ENDC}: {filename}"
                             )
                             self.docker_images.extend(docker_file.get_docker_images())
+                elif filename.endswith(".tf"):
+                    terraform_images = TerraformFile(
+                            file_path=os.path.join(root, filename)
+                        ).get_docker_images()
+                    if len(terraform_images) > 0:
+                        print(
+                            f"{PrintColors.BOLD}Detected terraform file{PrintColors.ENDC}: {filename}"
+                        )
+                        self.docker_images.extend(
+                            terraform_images
+                        )
             if not self.recurse_flag:
                 break
 
@@ -141,6 +155,7 @@ class DockerScanner:
                 docker_image=docker_image,
                 base_image_flag=self.base_image_flag,
                 inspect_info_flag=self.inspect_info_flag,
+                runtime_info_flag=self.runtime_info_flag,
                 stigs_flag=self.stigs_flag,
             )
             docker_analytics.analyze_docker_image()

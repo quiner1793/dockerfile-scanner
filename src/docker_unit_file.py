@@ -1,3 +1,4 @@
+import re
 from os import path
 import yaml
 from dockerfile_parse import DockerfileParser
@@ -92,8 +93,11 @@ def recursive_find_images(content):
     images = []
     if isinstance(content, dict):
         for key, value in content.items():
-            if key == "image" and isinstance(value, str):
-                images.append(value)
+            if key == "image":
+                if isinstance(value, str):
+                    images.append(value)
+                elif "repository" in value and "tag" in value:
+                    images.append(value["repository"] + ":" + value["tag"])
             elif isinstance(content, dict) or isinstance(content, list):
                 images.extend(recursive_find_images(value))
     elif isinstance(content, list):
@@ -138,3 +142,28 @@ class HelmFile(DockerUnitFile):
             DockerImage(image_name=image_name, usage_link=self.file_path)
             for image_name in parse_k8s_helm_images(self.file_path)
         ]
+
+
+class TerraformFile(DockerUnitFile):
+    def __init__(self, file_path: str):
+        super().__init__(file_path)
+
+    def get_docker_images(self) -> list[DockerImage]:
+        docker_images: list[DockerImage] = []
+        docker_image_pattern = re.compile(
+            r'resource\s+"docker_image"\s+"\w+"\s*\{\s*name\s*=\s*"([^"]+)"',
+            re.IGNORECASE | re.DOTALL,
+        )
+        try:
+            with open(self.file_path, "r") as file:
+                content = file.read()
+                matches = docker_image_pattern.findall(content)
+                for match in matches:
+                    docker_images.append(
+                        DockerImage(image_name=match, usage_link=self.file_path)
+                    )
+        except Exception as e:
+            print(
+                f"{PrintColors.FAIL}Error reading file {self.file_path}: {e}{PrintColors.ENDC}"
+            )
+        return docker_images
