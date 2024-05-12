@@ -20,6 +20,4 @@ COPY src/ ${project_root}
 
 WORKDIR ${project_root}
 
-USER poetry_user
-
 CMD python -u main.py "/scan_dir"
