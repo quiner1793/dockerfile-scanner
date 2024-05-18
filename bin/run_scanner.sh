@@ -12,4 +12,4 @@ source ${DIR}/bin/activate
 pip install -r src/requirements.txt
 
 cd src/ || exit 1
-../${DIR}/bin/python3
+../${DIR}/bin/python3 main.py ../
