@@ -77,7 +77,7 @@ class StigInfo:
         ]
 
         try:
-            oscap_docker = OscapDockerScan(target=docker_image_name, is_image=True)
+            oscap_docker = OscapDockerScan(target=docker_image_name, is_image=True, oscap_binary="/usr/bin/oscap")
             self.oscap_result = OscapDockerScan.scan(oscap_docker, leftover_args)
 
             # Define a pattern to find the Result lines and their statuses.
