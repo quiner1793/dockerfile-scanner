@@ -30,7 +30,8 @@ from oscap_docker_python_new.oscap_docker_common import oscap_chroot, get_dist
 
 
 class OscapError(Exception):
-    ''' oscap Error'''
+    """oscap Error"""
+
     pass
 
 
@@ -38,9 +39,14 @@ OscapResult = collections.namedtuple("OscapResult", ("returncode", "stdout", "st
 
 
 class OscapDockerScan(object):
-
-    def __init__(self, target, host_mount_point: str, scap_content: str, is_image=False, oscap_binary='oscap'):
-
+    def __init__(
+        self,
+        target,
+        host_mount_point: str,
+        scap_content: str,
+        is_image=False,
+        oscap_binary="oscap",
+    ):
         # init docker low level api (usefull for deep details like container pid)
         try:
             self.client = docker.APIClient()
@@ -52,7 +58,7 @@ class OscapDockerScan(object):
         self.is_image = is_image
         self.mountpoint = host_mount_point
         self.stop_at_end = False  # stop the container after scan if True
-        self.oscap_binary = oscap_binary or 'oscap'
+        self.oscap_binary = oscap_binary or "oscap"
         self.container_name = None
         self.image_name = None
 
@@ -64,13 +70,18 @@ class OscapDockerScan(object):
 
                 try:
                     tmp_cont = self.client.create_container(
-                        self.image_name, 'sh', name=self.container_name, tty=True,
+                        self.image_name,
+                        "sh",
+                        name=self.container_name,
+                        tty=True,
                         volumes=[self.mountpoint, scap_content],
-                        host_config=self.client.create_host_config(binds=[
-                            f"/root:/{self.mountpoint}"  # mounts the root of the container to /mnt inside the container
-                        ])
+                        host_config=self.client.create_host_config(
+                            binds=[
+                                f"/root:/{self.mountpoint}"  # mounts the root of the container to /mnt inside the container
+                            ]
+                        ),
                     )
-                    self.client.start(container=tmp_cont.get('Id'))
+                    self.client.start(container=tmp_cont.get("Id"))
 
                     # Configuration becomes
                     self.config = self.client.inspect_container(self.container_name)
@@ -82,23 +93,30 @@ class OscapDockerScan(object):
                 raise ValueError("Image {0} not found.\n".format(target))
 
         else:
-            self.container_name, self.config = \
-                self._get_container_name_and_config(target)
+            self.container_name, self.config = self._get_container_name_and_config(
+                target
+            )
 
             # is the container running ?
             if int(self.config["State"]["Pid"]) == 0:
-                print("Container {0} is stopped, running it temporarily ..."
-                      .format(self.container_name))
+                print(
+                    "Container {0} is stopped, running it temporarily ...".format(
+                        self.container_name
+                    )
+                )
 
                 self.client_api.containers.get(self.container_name).start()
-                self.container_name, self.config = \
-                    self._get_container_name_and_config(target)
+                self.container_name, self.config = self._get_container_name_and_config(
+                    target
+                )
 
                 if int(self.config["State"]["Pid"]) == 0:
                     sys.stderr.write(
                         "Cannot keep running container {0}, skip it.\n \
-                        Please start this container before scan it.\n"
-                        .format(self.container_name))
+                        Please start this container before scan it.\n".format(
+                            self.container_name
+                        )
+                    )
                 else:
                     self.stop_at_end = True
 
@@ -106,14 +124,15 @@ class OscapDockerScan(object):
             self.pid = int(self.config["State"]["Pid"])
 
         if self._check_container_mountpoint():
-            print("Docker container {0} ready to be scanned."
-                  .format(self.container_name))
+            print(
+                "Docker container {0} ready to be scanned.".format(self.container_name)
+            )
         else:
             self._end()
             raise RuntimeError(
                 "Cannot access mountpoint of container {0}, "
-                "please RUN WITH ROOT privileges.\n"
-                .format(self.container_name))
+                "please RUN WITH ROOT privileges.\n".format(self.container_name)
+            )
 
     def _end(self):
         if self.is_image:
@@ -127,28 +146,28 @@ class OscapDockerScan(object):
                 self.client.stop(self.container_name)
 
     def _get_image_name_and_config(self, target):
-        '''
+        """
         Ensure that target is an image.
         Returns full image name if exists or image ID otherwise.
         For containers returns
         container name if exists or container ID otherwise.
-        '''
+        """
 
         try:
             image = self.client.inspect_image(target)
             if image["RepoTags"]:
                 name = ", ".join(image["RepoTags"])
             else:
-                name = image["Id"][len("sha256:"):][:10]
+                name = image["Id"][len("sha256:") :][:10]
             return name, image
         except docker.errors.NotFound:
             return None, {}
 
     def _get_container_name_and_config(self, target):
-        '''
+        """
         Ensure that target is a container.
         Returns container name if exists or container ID otherwise.
-        '''
+        """
         try:
             container = self.client.inspect_container(target)
             if container["Name"]:
@@ -160,25 +179,31 @@ class OscapDockerScan(object):
             return None, {}
 
     def _check_container_mountpoint(self):
-        '''
+        """
         Ensure that the container fs is well mounted and return its path
-        '''
+        """
         return os.access(self.mountpoint, os.R_OK)
 
     def scan_cve(self, scan_args):
-        '''
+        """
         Wrapper function for scanning cve of a mounted container
-        '''
+        """
 
         tmp_dir = tempfile.mkdtemp()
 
         # Figure out which RHEL dist is in the chroot
-        dist = get_dist(self.mountpoint, self.oscap_binary,
-                        self.config["Config"].get("Env", []) or [])
+        dist = get_dist(
+            self.mountpoint,
+            self.oscap_binary,
+            self.config["Config"].get("Env", []) or [],
+        )
 
         if dist is None:
-            sys.stderr.write("{0} is not based on RHEL\n"
-                             .format(self.image_name or self.container_name))
+            sys.stderr.write(
+                "{0} is not based on RHEL\n".format(
+                    self.image_name or self.container_name
+                )
+            )
             return None
 
         # Fetch the CVE input data for the dist
@@ -193,9 +218,12 @@ class OscapDockerScan(object):
         args += (cve_file,)
 
         scan_result = oscap_chroot(
-            self.mountpoint, self.oscap_binary, args,
+            self.mountpoint,
+            self.oscap_binary,
+            args,
             self.image_name or self.container_name,
-            self.config["Config"].get("Env", []) or []  # because Env can exists but be None
+            self.config["Config"].get("Env", [])
+            or [],  # because Env can exists but be None
         )
 
         print(scan_result.stdout)
@@ -210,14 +238,16 @@ class OscapDockerScan(object):
         return scan_result.returncode
 
     def scan(self, scan_args):
-        '''
+        """
         Wrapper function forwarding oscap args for an offline scan
-        '''
+        """
         scan_result = oscap_chroot(
             self.mountpoint,
-            self.oscap_binary, scan_args,
+            self.oscap_binary,
+            scan_args,
             self.image_name or self.container_name,
-            self.config["Config"].get("Env", []) or []  # because Env can exists but be None
+            self.config["Config"].get("Env", [])
+            or [],  # because Env can exists but be None
         )
 
         print(scan_result.stdout)

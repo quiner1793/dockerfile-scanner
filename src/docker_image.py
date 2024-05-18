@@ -39,7 +39,7 @@ class StigInfo:
             if base_stig_info is not None:
                 # Found better stig for base image
                 if stig_info is None or len(base_stig_info.keys()) > len(
-                        stig_info.keys()
+                    stig_info.keys()
                 ):
                     stig_info = base_stig_info
 
@@ -56,20 +56,24 @@ class StigInfo:
         self.failed: int | None = None
         self.not_applicable: int | None = None
 
-
     def scan_docker_image(self, docker_image_name: str | None):
         if docker_image_name is None:
             return None
 
         leftover_args = [
-            "xccdf", "eval",
+            "xccdf",
+            "eval",
             "--fetch-remote-resources",
-            "--datastream-id", self.datastream_id,
-            "--xccdf-id", self.xccdf_id,
-            "--profile", self.profile,
+            "--datastream-id",
+            self.datastream_id,
+            "--xccdf-id",
+            self.xccdf_id,
+            "--profile",
+            self.profile,
             "--oval-results",
-            "--report", f"{docker_image_name.replace(':', '_')}_report.html",
-            f"../scap-content/{self.scap_file}"
+            "--report",
+            f"{docker_image_name.replace(':', '_')}_report.html",
+            f"../scap-content/{self.scap_file}",
         ]
 
         try:
@@ -77,15 +81,15 @@ class StigInfo:
             self.oscap_result = OscapDockerScan.scan(oscap_docker, leftover_args)
 
             # Define a pattern to find the Result lines and their statuses.
-            result_pattern = re.compile(r'^Result\s+(pass|fail|notapplicable)$', re.M)
+            result_pattern = re.compile(r"^Result\s+(pass|fail|notapplicable)$", re.M)
 
             # Find all matches according to the pattern
             results = result_pattern.findall(self.oscap_result.stdout)
 
             # Count each type of result
-            self.passed = results.count('pass')
-            self.failed = results.count('fail')
-            self.not_applicable = results.count('notapplicable')
+            self.passed = results.count("pass")
+            self.failed = results.count("fail")
+            self.not_applicable = results.count("notapplicable")
         except (ValueError, RuntimeError) as e:
             print(e)
         except FileNotFoundError as e:
@@ -195,7 +199,7 @@ class DockerImage:
         self.stig_info.scan_docker_image(docker_image_name=self.image_name)
 
     def docker_exec_commands(
-            self, commands: dict[str, str], docker_client: DockerClient
+        self, commands: dict[str, str], docker_client: DockerClient
     ) -> dict[str, str | None]:
         # Create the container but do not start it yet
         output = {command: None for command in commands.keys()}
@@ -243,12 +247,12 @@ class DockerImage:
 
 class DockerImageAnalytics:
     def __init__(
-            self,
-            docker_image: DockerImage,
-            base_image_flag: bool = True,
-            inspect_info_flag: bool = True,
-            runtime_info_flag: bool = True,
-            stigs_flag: bool = True,
+        self,
+        docker_image: DockerImage,
+        base_image_flag: bool = True,
+        inspect_info_flag: bool = True,
+        runtime_info_flag: bool = True,
+        stigs_flag: bool = True,
     ):
         self.docker_image = docker_image
         self.base_image_flag = base_image_flag

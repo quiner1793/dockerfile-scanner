@@ -23,55 +23,71 @@ import collections
 
 
 class OscapError(Exception):
-    ''' oscap Error'''
+    """oscap Error"""
+
     pass
+
 
 OscapResult = collections.namedtuple("OscapResult", ("returncode", "stdout", "stderr"))
 
 
 def oscap_chroot(chroot_path, oscap_binary, oscap_args, target_name, local_env=[]):
-        '''
-        Wrapper running oscap_chroot on an OscapDockerScan OscapAtomicScan object
-        '''
-        os.environ["OSCAP_PROBE_ROOT"] = os.path.join(chroot_path)
-        os.environ["OSCAP_EVALUATION_TARGET"] = target_name
-        os.environ["OSCAP_CONTAINER_VARS"] = '\n'.join(local_env)
+    """
+    Wrapper running oscap_chroot on an OscapDockerScan OscapAtomicScan object
+    """
+    os.environ["OSCAP_PROBE_ROOT"] = os.path.join(chroot_path)
+    os.environ["OSCAP_EVALUATION_TARGET"] = target_name
+    os.environ["OSCAP_CONTAINER_VARS"] = "\n".join(local_env)
 
-        cmd = [oscap_binary] + [x for x in oscap_args]
+    cmd = [oscap_binary] + [x for x in oscap_args]
 
-        oscap_process = subprocess.Popen(cmd, stdout=subprocess.PIPE,
-                                         stderr=subprocess.PIPE)
-        oscap_stdout, oscap_stderr = oscap_process.communicate()
-        return OscapResult(oscap_process.returncode,
-                           oscap_stdout.decode("utf-8"),
-                           oscap_stderr.decode("utf-8"))
+    oscap_process = subprocess.Popen(
+        cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE
+    )
+    oscap_stdout, oscap_stderr = oscap_process.communicate()
+    return OscapResult(
+        oscap_process.returncode,
+        oscap_stdout.decode("utf-8"),
+        oscap_stderr.decode("utf-8"),
+    )
+
 
 # TODO replace by _get_cpe (in order to indentify any containerized system)
 
 
 def get_dist(mountpoint, oscap_binary, local_env):
-    CPE_RHEL = 'oval:org.open-scap.cpe.rhel:def:'
+    CPE_RHEL = "oval:org.open-scap.cpe.rhel:def:"
     DISTS = ["8", "7", "6", "5"]
 
-    '''
+    """
     Test the chroot and determine what RHEL dist it is; returns
     an integer representing the dist
-    '''
+    """
 
-    cpe_dict = '/usr/share/openscap/cpe/openscap-cpe-oval.xml'
+    cpe_dict = "/usr/share/openscap/cpe/openscap-cpe-oval.xml"
     if not os.path.exists(cpe_dict):
         # sometime it's installed into /usr/local/share instead of /usr/local
-        cpe_dict = '/usr/local/share/openscap/cpe/openscap-cpe-oval.xml'
+        cpe_dict = "/usr/local/share/openscap/cpe/openscap-cpe-oval.xml"
         if not os.path.exists(cpe_dict):
             raise OscapError()
 
     for dist in DISTS:
         result = oscap_chroot(
-            mountpoint, oscap_binary,
-            ("oval", "eval", "--id", CPE_RHEL + dist, cpe_dict,
-             mountpoint, "2>&1", ">", "/dev/null"),
-            '*',
-            local_env
+            mountpoint,
+            oscap_binary,
+            (
+                "oval",
+                "eval",
+                "--id",
+                CPE_RHEL + dist,
+                cpe_dict,
+                mountpoint,
+                "2>&1",
+                ">",
+                "/dev/null",
+            ),
+            "*",
+            local_env,
         )
 
         if "{0}{1}: true".format(CPE_RHEL, dist) in result.stdout:
