@@ -1,6 +1,9 @@
 #!/bin/bash
 
 DIR="./.venv"
+export DOCKER_HOST="unix:///var/run/docker.sock"
+export DOCKER_TLS_VERIFY=""
+export DOCKER_CERT_PATH=""
 
 if [ -d "$DIR" ]; then
   echo "venv exists"
