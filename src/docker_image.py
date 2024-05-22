@@ -77,11 +77,13 @@ class StigInfo:
         ]
 
         try:
+            print("Init oscap docker scan ...")
             oscap_docker = OscapDockerScan(
                 target=docker_image_name, is_image=True, oscap_binary="/usr/bin/oscap"
             )
+            print("Start oscap docker scan ...")
             self.oscap_result = OscapDockerScan.scan(oscap_docker, leftover_args)
-
+            print("Finish oscap docker scan ...")
             # Define a pattern to find the Result lines and their statuses.
             result_pattern = re.compile(r"^Result\s+(pass|fail|notapplicable)$", re.M)
 
