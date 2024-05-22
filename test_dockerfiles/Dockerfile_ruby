@@ -1,6 +1,0 @@
-FROM ruby:3
-WORKDIR /app
-COPY Gemfile .
-RUN bundle install
-COPY ../dockerfiles .
-CMD ["ruby", "app.rb"]

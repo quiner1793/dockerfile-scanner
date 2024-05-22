@@ -2,9 +2,11 @@ import json
 import re
 
 base_files_full_history = json.load(
-    open("base_files_full_history_compressed.json", "r")
+    open("../artifacts/base_files_full_history_compressed.json", "r")
 )
-docker_image_stigs: dict[str, dict] = json.load(open("docker_image_stigs.json", "r"))
+docker_image_stigs: dict[str, dict] = json.load(
+    open("../scap-content/docker_image_stigs.json", "r")
+)
 base_file_pattern = re.compile(r"file:(\w{64}) in /")
 
 
