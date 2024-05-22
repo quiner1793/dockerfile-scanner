@@ -20,6 +20,7 @@ if [ ! -w "$DIR" ]; then
   else
     echo "Permissions changed successfully for $DIR"
   fi
+fi
 
 source ${DIR}/bin/activate
 pip install -r src/requirements.txt
