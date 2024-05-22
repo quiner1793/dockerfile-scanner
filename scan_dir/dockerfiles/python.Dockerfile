@@ -1,5 +1,5 @@
 # Creating a python base with shared environment variables
-FROM python:3.11 AS python-base
+FROM python:3.11.1 AS python-base
 
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \

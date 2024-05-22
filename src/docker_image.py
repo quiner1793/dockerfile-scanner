@@ -79,7 +79,7 @@ class StigInfo:
         try:
             print("Init oscap docker scan ...")
             oscap_docker = OscapDockerScan(
-                target=docker_image_name, is_image=True, oscap_binary="/usr/bin/oscap"
+                target=docker_image_name, is_image=True, oscap_binary="../bin/oscap"
             )
             print("Start oscap docker scan ...")
             self.oscap_result = OscapDockerScan.scan(oscap_docker, leftover_args)
