@@ -49,19 +49,20 @@ Contains source code of the program, oscap_docker_python library and experiment 
 Create virtual env:
 
 ```shell
-python3 -m venv venv
+python3 -m venv .venv
 ```
 
 Activate venv:
 
 ```shell
-source venv/bin/activate
+source ./.venv/bin/activate
 ```
 
 Run main script with sudo:
 
 ```shell
-sudo venv/bin/python3 src/main.py "path_to_can_dir"
+cd src/
+sudo RECURSE=true BASE_IMAGE=true INSPECT_INFO=true STIGS_SCAN=true ../.venv/bin/python3 main.py "path_to_scan_dir"
 ```
 
 ## Dockerize
