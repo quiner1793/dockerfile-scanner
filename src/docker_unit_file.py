@@ -9,6 +9,7 @@ from constants import PrintColors
 
 class DockerUnitFile:
     """Base file with Docker image usage"""
+
     def __init__(self, file_path: str):
         self.file_path = file_path
 

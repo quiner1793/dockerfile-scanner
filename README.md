@@ -77,6 +77,9 @@ docker build -t quiner/docker_scanner:1.0.0 .
 
 ### Run docker
 
+Run without RUNTIME_INFO and STIGS_SCAN
+
 ```shell
-docker run -v ./:/scan_dir:ro -v /var/run/docker.sock:/var/run/docker.sock quiner/docker_scanner:1.0.0 
+docker run -v ./:/scan_dir:ro -v /var/run/docker.sock:/var/run/docker.sock -e RECURSE=true \
+-e BASE_IMAGE=true -e INSPECT_INFO=true quiner/docker_scanner:1.0.0 
  ```
