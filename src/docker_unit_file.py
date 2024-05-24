@@ -8,6 +8,7 @@ from constants import PrintColors
 
 
 class DockerUnitFile:
+    """Base file with Docker image usage"""
     def __init__(self, file_path: str):
         self.file_path = file_path
 
@@ -20,6 +21,7 @@ class Dockerfile(DockerUnitFile):
         super().__init__(file_path)
 
     def get_docker_images(self) -> list[DockerImage]:
+        """Get images based on Dockerfile FROM instruction"""
         docker_images: list[DockerImage] = []
 
         if path.exists(self.file_path):
@@ -42,6 +44,7 @@ class DockerCompose(DockerUnitFile):
     def get_images_docker_compose_build(
         self, build_context: str | None, dockerfile_path: str | None
     ) -> list[DockerImage]:
+        """Utilize Dockerfile class for cases when image is build in runtime"""
         if build_context is not None:
             dockerfile_path = path.join(build_context, dockerfile_path)
         joined_dockerfile_path = path.join(self.compose_dir, dockerfile_path)
@@ -49,26 +52,34 @@ class DockerCompose(DockerUnitFile):
         return Dockerfile(file_path=joined_dockerfile_path).get_docker_images()
 
     def get_docker_images(self) -> list[DockerImage]:
+        """Get images based on docker compose services"""
         docker_images: list[DockerImage] = []
 
         with open(self.file_path) as stream:
             try:
                 docker_compose = yaml.safe_load(stream)
+                # Iterate through compose services
                 for service_name, service_content in docker_compose["services"].items():
                     image_name = service_content.get("image")
                     build_info = service_content.get("build")
                     if build_info is not None:
+                        # Firstly check for build info
                         if isinstance(build_info, str):
                             if "dockerfile" not in build_info.lower():
+                                # Invalid name: replace with Dockerfile
                                 build_info = path.join(build_info, "Dockerfile")
+                            # If build info is str => no build context
                             build_context = None
                             dockerfile_path = build_info
                         elif isinstance(build_info, dict):
+                            # For dict build info both build context and dockerfile
+                            # path should be present
                             build_context = build_info.get("context")
                             dockerfile_path = build_info.get("dockerfile")
                         else:
                             break
 
+                        # Utilize Dockerfile logic
                         temp_docker_images = self.get_images_docker_compose_build(
                             build_context=build_context,
                             dockerfile_path=dockerfile_path,
@@ -78,6 +89,7 @@ class DockerCompose(DockerUnitFile):
                         docker_images.extend(temp_docker_images)
 
                     elif image_name is not None:
+                        # Direct docker image provided
                         docker_images.append(
                             DockerImage(
                                 image_name=image_name, usage_link=self.file_path
@@ -90,15 +102,21 @@ class DockerCompose(DockerUnitFile):
 
 
 def recursive_find_images(content):
+    """
+    Recursively parse content dict and check for image key
+    """
     images = []
     if isinstance(content, dict):
         for key, value in content.items():
             if key == "image":
                 if isinstance(value, str):
+                    # Image introduced directly
                     images.append(value)
                 elif "repository" in value and "tag" in value:
+                    # Image could be introduced with repository and tag
                     images.append(value["repository"] + ":" + value["tag"])
             elif isinstance(content, dict) or isinstance(content, list):
+                # Continue search
                 images.extend(recursive_find_images(value))
     elif isinstance(content, list):
         for item in content:
@@ -107,6 +125,9 @@ def recursive_find_images(content):
 
 
 def parse_k8s_helm_images(file_path: str) -> list[str]:
+    """
+    Recursively parse content of k8s or helm files for docker images
+    """
     images = []
     try:
         with open(file_path, "r") as file:
@@ -127,6 +148,9 @@ class KubernetesFile(DockerUnitFile):
         super().__init__(file_path)
 
     def get_docker_images(self) -> list[DockerImage]:
+        """
+        Get images using recursive content parsing
+        """
         return [
             DockerImage(image_name=image_name, usage_link=self.file_path)
             for image_name in parse_k8s_helm_images(self.file_path)
@@ -138,6 +162,9 @@ class HelmFile(DockerUnitFile):
         super().__init__(file_path)
 
     def get_docker_images(self) -> list[DockerImage]:
+        """
+        Get images using recursive content parsing
+        """
         return [
             DockerImage(image_name=image_name, usage_link=self.file_path)
             for image_name in parse_k8s_helm_images(self.file_path)
@@ -149,7 +176,11 @@ class TerraformFile(DockerUnitFile):
         super().__init__(file_path)
 
     def get_docker_images(self) -> list[DockerImage]:
+        """
+        Get images based on terraform docker_image resource
+        """
         docker_images: list[DockerImage] = []
+        # From docker_image resource section extract image name
         docker_image_pattern = re.compile(
             r'resource\s+"docker_image"\s+"\w+"\s*\{\s*name\s*=\s*"([^"]+)"',
             re.IGNORECASE | re.DOTALL,

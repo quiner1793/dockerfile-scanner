@@ -3,6 +3,7 @@ from tabulate import tabulate
 
 from docker_image import DockerImage
 
+# Mapping of docker image to its manually found base platform
 manual_base_images = {
     "alpine:3.17.1": "alpine:3.17.1",
     "alpine:3.18.5": "alpine:3.18.5",
@@ -29,6 +30,7 @@ manual_base_images = {
     "rabbitmq:3.12.14-alpine": "alpine:3.19.1",
 }
 
+# Call get_base_image method for all docker images and print comparison table
 if __name__ == "__main__":
     images = [
         DockerImage(image_name=image_name, usage_link="")

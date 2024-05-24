@@ -14,16 +14,22 @@ from oscap_docker_python.oscap_docker_util_noatomic import OscapDockerScan
 
 
 def get_stig_info(docker_image_name: str | None) -> dict | None:
+    """
+    Get available stigs metadata for Docker image
+    """
     if docker_image_name is None:
         return None
 
     stig_info = None
     for docker_family in docker_image_stigs.keys():
+        # Search for Docker image ignoring version
         if docker_image_name.startswith(docker_family):
             base_docker_stigs = docker_image_stigs[docker_family]
+            # Search for docker image with version
             for docker_family_member in base_docker_stigs.keys():
                 if docker_image_name.startswith(docker_family_member):
                     stig_info = base_docker_stigs[docker_family_member]
+            # If version not found - use default stig for that image family
             if stig_info is None:
                 stig_info = base_docker_stigs.get("default")
     return stig_info
@@ -31,9 +37,10 @@ def get_stig_info(docker_image_name: str | None) -> dict | None:
 
 class StigInfo:
     def __init__(self, docker_image_name: str | None, base_image_name: str | None):
+        # First attempt to find STIG info
         stig_info = get_stig_info(docker_image_name=docker_image_name)
 
-        # STIG not found or default STIG info is used
+        # STIG not found or default STIG info is used: try base image
         if stig_info is None or len(stig_info.keys()) == 1:
             base_stig_info = get_stig_info(docker_image_name=base_image_name)
             if base_stig_info is not None:
@@ -57,6 +64,9 @@ class StigInfo:
         self.not_applicable: int | None = None
 
     def scan_docker_image(self, docker_image_name: str | None):
+        """
+        Run oscap inside docker container based on found stig info
+        """
         if docker_image_name is None:
             return None
 
@@ -102,6 +112,9 @@ class StigInfo:
             print(exc)
 
     def print_report(self):
+        """
+        Print STIG report
+        """
         print(f"\tSTIG name: {self.stig_name}")
         print(f"\tProfile: {self.profile}")
         print(f"\tDatastream ID: {self.datastream_id}")
@@ -113,6 +126,10 @@ class StigInfo:
 
 
 def find_base_image(file_hash: str | None) -> str | None:
+    """
+    Search for file hash in base_files_full_history. All file hashes are unique => return
+    on first found
+    """
     for base_image_name, file_hashes in base_files_full_history.items():
         if file_hash in file_hashes:
             return base_image_name
@@ -177,11 +194,11 @@ class DockerImage:
         self.runtime_info: DockerRuntimeInfo | None = None
 
     def pull_docker_image(self, docker_client: DockerClient):
-        # Pull docker image
+        """Pull docker image using Docker client"""
         docker_client.images.pull(self.image_name)
 
     def inspect_docker_image(self, docker_client: DockerClient):
-        # Inspect docker image and extract Os and Arch info
+        """Inspect docker image and extract Os and Arch info"""
         image = docker_client.images.get(self.image_name)
         self.inspect_info = DockerInspectInfo(
             os_info=image.attrs.get("Os", "Undefined"),
@@ -189,14 +206,16 @@ class DockerImage:
         )
 
     def get_base_image(self, docker_client: DockerClient):
-        # Get history of image and extract the hash of the base image layer
+        """Get history of image and extract the hash of the base image layer"""
         image = docker_client.images.get(self.image_name)
         image_history = image.history()
         matches = base_file_pattern.findall(str(image_history))
+        # Extract the oldest (base) layer file hash
         file_hash = matches[-1] if len(matches) > 0 else None
         self.base_image_name = find_base_image(file_hash)
 
     def get_image_stig_analytics(self):
+        """Get stig info and analyze image"""
         self.stig_info = StigInfo(
             docker_image_name=self.image_name, base_image_name=self.base_image_name
         )
@@ -205,6 +224,7 @@ class DockerImage:
     def docker_exec_commands(
         self, commands: dict[str, str], docker_client: DockerClient
     ) -> dict[str, str | None]:
+        """Start container and exec list of command inside"""
         # Create the container but do not start it yet
         output = {command: None for command in commands.keys()}
         error_text = None
@@ -239,12 +259,14 @@ class DockerImage:
         return output
 
     def get_runtime_info(self, docker_client: DockerClient):
+        """Get runtime docker info"""
         exec_log = self.docker_exec_commands(
             DockerRuntimeInfo.get_exec_commands(), docker_client=docker_client
         )
         self.runtime_info = DockerRuntimeInfo(exec_log=exec_log)
 
     def add_usage_link(self, usage_link: str):
+        """Add file where docker image is used"""
         if usage_link not in self.usage_links:
             self.usage_links.append(usage_link)
 

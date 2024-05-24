@@ -15,13 +15,18 @@ from constants import PrintColors
 
 
 def filter_usage_links(usage_links: list[str], extend_links: list[str]) -> list[str]:
+    """
+    Filter file usage links. Return only unique links based on absolute path.
+    """
     return list(
         set(os.path.realpath(usage_link) for usage_link in usage_links + extend_links)
     )
 
 
 def check_file_k8s_or_helm(file_path: str, filename: str) -> DockerUnitFile | None:
-    # Function to check if a file is a Kubernetes or Helm manifest
+    """
+    Function to check if a file is a Kubernetes or Helm manifest
+    """
     try:
         with open(file_path, "r") as file:
             content = yaml.safe_load(file)
@@ -29,6 +34,7 @@ def check_file_k8s_or_helm(file_path: str, filename: str) -> DockerUnitFile | No
             # Check for typical Kubernetes and Helm-specific fields
             if isinstance(content, dict):
                 # Kubernetes' resources usually have 'apiVersion', 'kind' and 'spec' fields
+                # Or are name like deployment.*, ingress.*, service.*
                 if (
                     "apiVersion" in content
                     and "kind" in content
@@ -72,9 +78,14 @@ class DockerScanner:
         self.stigs_flag = stigs_flag
 
     def traverse_directory(self):
+        """
+        Walk through directory to find files that contain Docker images.
+        Collect them in self.docker_images list with usage links
+        """
         print(f"{PrintColors.HEADER}Start directory traversing{PrintColors.ENDC}")
         for root, _, f_names in os.walk(self.scan_dir):
             for filename in f_names:
+                # Dockerfile
                 if ".dockerfile" in filename.lower():
                     print(
                         f"{PrintColors.BOLD}Detected Dockerfile{PrintColors.ENDC}: {filename}"
@@ -84,7 +95,7 @@ class DockerScanner:
                             file_path=os.path.join(root, filename)
                         ).get_docker_images()
                     )
-
+                # Docker compose and k8s/helm
                 elif filename.endswith(".yml") or filename.endswith(".yaml"):
                     if "docker-compose" in filename.lower():
                         print(
@@ -104,6 +115,7 @@ class DockerScanner:
                                 f"{PrintColors.BOLD}Detected k8s/helm manifest{PrintColors.ENDC}: {filename}"
                             )
                             self.docker_images.extend(docker_file.get_docker_images())
+                # Terraform
                 elif filename.endswith(".tf"):
                     print(
                         f"{PrintColors.BOLD}Detected terraform file{PrintColors.ENDC}: {filename}"
@@ -114,6 +126,7 @@ class DockerScanner:
                         ).get_docker_images()
                     )
 
+            # If recurse flag false: stop at first iteration
             if not self.recurse_flag:
                 break
 
@@ -121,20 +134,27 @@ class DockerScanner:
         return self
 
     def filter_images(self):
+        """
+        Filter Docker images from self.docker_images. Filter their usage links.
+        """
         print(f"{PrintColors.HEADER}Start image filtering{PrintColors.ENDC}")
+        # Mapping of unique Docker images to their usage links
         image_mapping: dict[str, list[str]] = {}
 
         for docker_image in self.docker_images:
+            # Image already found: extend usage links
             if docker_image.image_name in image_mapping:
                 image_mapping[docker_image.image_name] = filter_usage_links(
                     usage_links=image_mapping[docker_image.image_name],
                     extend_links=docker_image.usage_links,
                 )
+            # Image previously not found: add to mapping
             else:
                 image_mapping[docker_image.image_name] = filter_usage_links(
                     usage_links=docker_image.usage_links, extend_links=[]
                 )
 
+        # Update docker images list with only unique images
         self.docker_images = [
             DockerImage(image_name=image_name, usage_link=usage_links)
             for image_name, usage_links in image_mapping.items()
@@ -145,6 +165,9 @@ class DockerScanner:
         return self
 
     def make_docker_analytics(self):
+        """
+        For each image in self docker_images make analytics using DockerImageAnalytics class
+        """
         print(f"{PrintColors.HEADER}Start image analytics{PrintColors.ENDC}")
         for docker_image in self.docker_images:
             print(
@@ -164,6 +187,9 @@ class DockerScanner:
         return self
 
     def print_report(self):
+        """
+        Print report based on self docker image analytics list
+        """
         print(f"{PrintColors.HEADER}Start generating report{PrintColors.ENDC}")
         for docker_analytics in self.docker_image_analytics:
             print(
