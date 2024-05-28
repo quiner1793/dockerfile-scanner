@@ -25,18 +25,21 @@
   },
   "debian": {
     "debian:12": {
+      "name": "Debian 12",
       "profile": "xccdf_org.ssgproject.content_profile_anssi_bp28_enhanced",
       "datastream_id": "scap_org.open-scap_datastream_from_xccdf_ssg-debian12-xccdf.xml",
       "xccdf_id": "scap_org.open-scap_cref_ssg-debian12-xccdf.xml",
       "scap_file": "ssg-debian12-ds.xml"
     },
     "debian:11": {
+      "name": "Debian 11",
       "profile": "xccdf_org.ssgproject.content_profile_anssi_np_nt28_average",
       "datastream_id": "scap_org.open-scap_datastream_from_xccdf_ssg-debian11-xccdf.xml",
       "xccdf_id": "scap_org.open-scap_cref_ssg-debian11-xccdf.xml",
       "scap_file": "ssg-debian11-ds.xml"
     },
     "debian:10": {
+      "name": "Debian 10",
       "profile": "xccdf_org.ssgproject.content_profile_anssi_np_nt28_average",
       "datastream_id": "scap_org.open-scap_datastream_from_xccdf_ssg-debian10-xccdf.xml",
       "xccdf_id": "scap_org.open-scap_cref_ssg-debian10-xccdf.xml",
